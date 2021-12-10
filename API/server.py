@@ -26,5 +26,38 @@ def log(name=__name__, **kwargs):
 # Using Routes
 ######## Return highscore ########
 @hug.get("/highscore/")
-def users(db: sqlite):
-    return {"highscrore": db["hs"].rows}
+def highscore(db: sqlite):
+    return {"highscrore": db["score"].rows}
+
+
+######## Return user's score ########
+@hug.get("/score/{username}")
+def score(response, username:hug.types.text, db: sqlite):
+    scores = []
+    try:
+        score = db["score"].get(username)
+        scores.append(score)
+    except sqlite_utils.db.NotFoundError:
+        response.status = hug.falcon.HTTP_404
+        return {"User not found"}
+    return {"score": scores}
+
+
+######## Upsert user score ########
+@hug.post("/upload/")
+def user(
+    response,
+    username:hug.types.text,
+    score:hug.types.number,
+    db: sqlite):
+    user = { 
+        "username" : username,
+        "High_score" : score
+    }
+    try:
+        temp = db["score"].get(username)
+        if (score < temp["High_score"]):
+            return
+        db["score"].update(username, {"High_score": score})
+    except sqlite_utils.db.NotFoundError:
+        db["score"].insert(user)
